@@ -1,0 +1,17 @@
+{
+  "name": "sync_caller",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/stalker474/sync_caller",
+  "author": "stalker474 <anton.possylkine@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.1",
+    "truffle-hdwallet-provider": "^1.0.17",
+    "web3": "^1.3.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
