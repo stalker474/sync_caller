@@ -10,11 +10,13 @@ const UniswapPairContract = require("./contracts/uniswap-pair.json")
 const CONF = require("./conf.json")
 
 const hostname = '127.0.0.1';
-const port = 3000;
+const port = CONF.port;
 
 var last_total_supply = null;
 
 var logMessages = []
+var pendingHash = null
+var pendingNonce = 0
 
 log = function(message) {
   logtext = new Date().toString() + ": " + message
@@ -32,19 +34,22 @@ const STATE = {
   CHECK_SUPPLY : "check supply",
   FETCH_GAS : "fetch gas",
   CHECK_BALANCE : "balance",
+  CHECK_PENDING : "check pending",
   EXECUTE_TRANSACTION : "execute transaction",
+  ACCELERATE_TRANSACTION : "accelerate transaction",
   DONE : "done"
 }
 
 const script_machine = async () => {
-
-  var provider = new HDWalletProvider(CONF.pk, CONF.http);
+  
+  var provider = new HDWalletProvider(CONF.pk, "https://mainnet.infura.io/v3/" + CONF.infura_api_key);
   let web3 = new Web3(provider)
   let accounts = await web3.eth.getAccounts()
   let ampl = new web3.eth.Contract(UFragmentsContract, CONF.ufragments_address)
   let pair = new web3.eth.Contract(UniswapPairContract, CONF.pair_address)
   let gas_price = CONF.default_gas_price
   let gas_tries = 0
+  let pending_tries = 0
 
   let state = STATE.INIT
   
@@ -80,7 +85,7 @@ const script_machine = async () => {
       case STATE.FETCH_GAS:
         log("Fetching gas prices...")
 
-        if(gas_tries > CONF.max_tries) {
+        if(gas_tries > CONF.max_gas_fetch_tries) {
           gas_price = CONF.default_gas_price
           gas_tries = 0
         } else {
@@ -101,7 +106,35 @@ const script_machine = async () => {
         }
         log("Using gas price : " + gas_price)
 
-        state = STATE.CHECK_BALANCE
+        state = STATE.CHECK_PENDING
+        break
+
+      case STATE.CHECK_PENDING:
+        log("Checking of a previous pending transaction...")
+        if(pendingHash) {
+          log("We have a pending transaction : " + pendingHash)
+          let tx = await web3.eth.getTransaction(pendingHash)
+          if(tx) {
+            pendingHash = null
+            log("Previous transaction has been mined")
+            state = STATE.CHECK_BALANCE
+            pending_tries = 0
+          } else {
+            pending_tries++
+            log("Previous transaction isn't mined yet, trial " + pending_tries)
+            if(pending_tries > CONF.max_pending_transaction_tries) {
+              log("Wait for pending transaction failed")
+              pending_tries = 0
+              state = STATE.ACCELERATE_TRANSACTION
+            } else {
+              state = STATE.DONE
+            }
+          }
+        } else {
+          log("No pending transaction")
+          pending_tries = 0
+          state = STATE.CHECK_BALANCE
+        }
         break
 
       case STATE.CHECK_BALANCE:
@@ -117,10 +150,29 @@ const script_machine = async () => {
         }
         break
 
+      case STATE.ACCELERATE_TRANSACTION:
+        log("Accelerating transaction: " + pendingHash + "...")
+        pair.methods.sync().send({from : accounts[0], gas : CONF.max_gas, gasPrice : gas_price, nonce : pendingNonce}, function(error, transactionHash){})
+        .on('error', function(error)
+        { 
+          log("Transaction error: " + error)
+        }).on('transactionHash', function(transactionHash)
+        { 
+          pendingHash = transactionHash
+          log("Transaction hash: " + transactionHash) 
+        })
+
+        state = STATE.DONE
+        break
+
       case STATE.EXECUTE_TRANSACTION:
         log("Sending transaction...")
         // consider that the transaction is ok
         last_total_supply = supply
+
+        //remember the nonce
+        pendingNonce = await web3.eth.getTransactionCount(accounts[0])
+        log("Nonce: " + pendingNonce)
 
         pair.methods.sync().send({from : accounts[0], gas : CONF.max_gas, gasPrice : gas_price}, function(error, transactionHash){})
         .on('error', function(error)
@@ -130,14 +182,15 @@ const script_machine = async () => {
         })
         .on('transactionHash', function(transactionHash)
         { 
+          pendingHash = transactionHash
           log("Transaction hash: " + transactionHash) 
         })
         .on('receipt', function(receipt)
         {
+          pendingNonce
            log("Transaction receipt ready")
         })
   
-        
         state = STATE.DONE
         break
 
