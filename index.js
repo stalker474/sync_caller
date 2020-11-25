@@ -12,7 +12,7 @@ const CONF = require("./conf.json")
 const hostname = '127.0.0.1';
 const port = 3000;
 
-var last_total_supply = BigInt("270813374568561777");
+var last_total_supply = BigInt("276212982165020311");
 
 var logBackup = console.log;
 var logMessages = [];
