@@ -12,7 +12,7 @@ const CONF = require("./conf.json")
 const hostname = '127.0.0.1';
 const port = 3000;
 
-var last_total_supply = 270813374568561777;
+let last_total_supply = 270813374568561777;
 
 var logBackup = console.log;
 var logMessages = [];
@@ -33,7 +33,7 @@ const testRebase = async () => {
   let ampl = new web3.eth.Contract(UFragmentsContract, CONF.ufragments_address)
   
   let supply = await ampl.methods.totalSupply().call()
-  if(supply == last_total_supply) {
+  if(supply === last_total_supply) {
     console.log("Total supply didn't change, nothing to do, retrying in " + CONF.frequency + "ms")
     return
   }
@@ -67,13 +67,12 @@ const testRebase = async () => {
   if(gas_price * CONF.max_gas <= balance) {
       let pair = new web3.eth.Contract(UniswapPairContract, CONF.pair_address)
       console.log("Sending transaction...")
-      pair.methods.sync().send({from : accounts[0], gas : CONF.max_gas, gasPrice : gas_price}, function(error, transactionHash){})
+      /*pair.methods.sync().send({from : accounts[0], gas : CONF.max_gas, gasPrice : gas_price}, function(error, transactionHash){})
       .on('error', function(error){ console.error("Transaction error: ", error) })
       .on('transactionHash', function(transactionHash){ console.log("Transaction hash: " + transactionHash) })
       .on('receipt', function(receipt){
-         console.log("Transaction receipt: ", receipt)
-      })
-      .on('confirmation', function(confirmationNumber, receipt){ console.log("Transaction confirmed: ", confirmationNumber, receipt) })
+         console.log("Transaction receipt ready")
+      })*/
 
       last_total_supply = supply
 
@@ -84,8 +83,6 @@ const testRebase = async () => {
 
 app.get('/', (req, res) => {
   res.send(logMessages)
-  /*for(el in logMessages)
-    res.send(el)*/
 })
 
 app.listen(port, hostname, async () => {
