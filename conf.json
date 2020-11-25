@@ -1,0 +1,13 @@
+{
+    "pk" : "{PRIVATE_KEY}",
+    "ufragments_address" : "0xD46bA6D942050d489DBd938a2C909A5d5039A161",
+    "pair_address" : "0x53B784D0FB88F53C6aF76839a7eAEc8e95729375",
+    "http" : "https://mainnet.infura.io/v3/{API_KEY}",
+    "ws" : "wss://mainnet.infura.io/ws/v3/{API_KEY}",
+    "defaut_gas_price" : 100000000000,
+    "max_gas_price" : 300000000000,
+    "max_gas" : 150000,
+    "max_tries" : 3,
+    "port" : 3000,
+    "frequency" : 60000
+}
